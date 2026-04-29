@@ -7,7 +7,7 @@ Usage: ibkr-trade-history-from-tv.py
 Author: Darin Davis, Copyright 2026
 History:
     4/28/26: Initial version
-    4/29/26: Refactor aggregations
+    4/29/26: Refactor aggregations, add date as command line arg
 """
 
 """
@@ -16,19 +16,21 @@ History:
 import pandas as pd
 import sys
 from pathlib import Path
+from datetime import date, datetime
 
 """
                     GLOBAL VARIABLES
 """
-# full path to current user's Downloads folder
-downloads_folder = Path.home() / "Downloads"
+
+downloads_folder = Path.home() / "Downloads" # full path to current user's Downloads folder
+
 
 """
                     FUNCTIONS
 """
 
 def usage():
-    print("\nUsage:", sys.argv[0])
+    print("\nUsage:", sys.argv[0], "[YYYY-MM-DD]")
 
 
 """
@@ -36,6 +38,20 @@ def usage():
 """
 if __name__ == "__main__":
 
+
+    this_date = date.today().strftime('%Y-%m-%d') # default date of trades to analyze
+
+    if len(sys.argv) > 1: # check if user provided date
+        this_date = sys.argv[1] # first argument after script name
+        try:
+            test_date = datetime.strptime(this_date, '%Y-%m-%d')
+        except:
+            print(f"Date must be in format YYYY-MM-DD not {this_date}")
+            usage()
+            sys.exit(1)
+
+
+    # define the filename of the trade history file
     in_file = downloads_folder / "interactive-brokers-trade-history.csv"
 
     # load the history file into a dataframe
@@ -47,18 +63,22 @@ if __name__ == "__main__":
                 history = pd.read_csv(in_file)
         else:
             print(f"File '{in_file}' does not exist.")
-
     except Exception as e:
         print(f"Error: {e}")
 
 
+    print(f"Trade history for {this_date}")
+
     # Convert Time column to datetime
     history['Time'] = pd.to_datetime(history['Time'])
 
-    this_date = '2026-04-28' # date of trades to analyze
-
     # filter out all dates except for this_date
     daily_history = history[history['Time'].dt.date == pd.to_datetime(this_date).date()].copy()
+
+    if daily_history.empty:
+        print("No trades on this date")
+        exit(1)
+
 
     ### create columns for aggregation ###
 
