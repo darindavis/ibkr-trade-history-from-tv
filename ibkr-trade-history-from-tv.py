@@ -7,6 +7,7 @@ Usage: ibkr-trade-history-from-tv.py
 Author: Darin Davis, Copyright 2026
 History:
     4/28/26: Initial version
+    4/29/26: Refactor aggregations
 """
 
 """
@@ -59,61 +60,36 @@ if __name__ == "__main__":
     # filter out all dates except for this_date
     daily_history = history[history['Time'].dt.date == pd.to_datetime(this_date).date()].copy()
 
+    ### create columns for aggregation ###
+
     # create column reflecting negative quantity for sells
     daily_history['net_qty'] = daily_history['Qty'].where(daily_history['Side'] == 'Buy', -daily_history['Qty'])
     # Syntax: keep original value if condition is True; replace it with other value if condition is False
-    # print(history.info())
+    daily_history['buy_qty'] = daily_history['Qty'].where(daily_history['Side'] == 'Buy', 0)
+    daily_history['sell_qty'] = daily_history['Qty'].where(daily_history['Side'] == 'Sell', 0)
+    daily_history['buy_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Buy', 0)
+    daily_history['sell_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Sell', 0)
+    # print(daily_history.info())
     # print(daily_history.head())
 
-    # for each unique symbol, sum the number of contracts bought and sold
+    # for each unique symbol, sum the number and value of contracts bought and sold
     net_positions = (daily_history
-                    .groupby('Symbol')['net_qty']
-                    # Group the DataFrame by the Symbol column; creates a net_qty Series object (not a DataFrame)
-                    .sum()  # For each group (each unique Symbol), add all the values in net_qty
-                            # Result at this point is a pandas Series, with Index = Symbol, Values = Sum of net_qty
+                    .groupby('Symbol')
+                    .agg(
+                        net_qty=('net_qty', 'sum'),
+                        buy_qty=('buy_qty', 'sum'),
+                        sell_qty=('sell_qty', 'sum'),
+                        buy_amt=('buy_amt', 'sum'),
+                        sell_amt=('sell_amt', 'sum'),
+                    )
                     .reset_index())
-                            # Convert result from Series back into DataFrame. Moves Symbol from the index into a regular column.
 
-    # calc number of contracts bought per ticker
-    buy_counts = (daily_history[daily_history['Side'] == 'Buy'] # include only buys
-                .groupby('Symbol')['Qty'] # select only the Qty column, changing object from DataFrameGroupBy to SeriesGroupBy
-                .sum() # sum the Qty series
-                .reset_index(name='buyCount'))
-
-    # add buy_counts as a column to netPostions
-    net_positions = net_positions.merge(buy_counts, on='Symbol', how='left') # left join
-
-    # calc number of contracts sold per ticker
-    sell_counts = (daily_history[daily_history['Side'] == 'Sell'] # include only sells
-                .groupby('Symbol')['Qty'] # select only the Qty column, changing object from DataFrameGroupBy to SeriesGroupBy
-                .sum() # sum the Qty series
-                .reset_index(name='sellCount'))
-
-    # add sell_counts as a column to netPostions
-    net_positions = net_positions.merge(sell_counts, on='Symbol', how='left') # left join
-
-    # summarize the net amounts bought per ticker
-    net_amount_buy = (daily_history[daily_history['Side'] == 'Buy'] # include only buys
-                .groupby('Symbol')['Net Amount'] # select only the Net Amount column, changing object from DataFrameGroupBy to SeriesGroupBy
-                .sum() # sum the Net Amount series
-                .reset_index(name='net_amount_buy'))
-
-    # add net_amount_buy as a column to netPostions
-    net_positions = net_positions.merge(net_amount_buy, on='Symbol', how='left') # left join
-
-    # summarize the net amounts sold per ticker
-    net_amount_sell = (daily_history[daily_history['Side'] == 'Sell'] # include only sells
-                .groupby('Symbol')['Net Amount'] # select only the Net Amount column, changing object from DataFrameGroupBy to SeriesGroupBy
-                .sum() # sum the Net Amount series
-                .reset_index(name='net_amount_sell'))
-
-    # add net_amount_sell as a column to netPostions
-    net_positions = net_positions.merge(net_amount_sell, on='Symbol', how='left') # left join
-
-    net_positions['PnL'] = net_positions['net_amount_sell'] - net_positions['net_amount_buy']
+    # compute PnL for each symbol
+    net_positions['PnL'] = net_positions['sell_amt'] - net_positions['buy_amt']
 
     print(net_positions)
-    
+
+    # compute total PnL for all symbols
     total_pnl = net_positions['PnL'].sum()
     print(f"Total PnL: {total_pnl}")
 
