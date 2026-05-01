@@ -103,7 +103,7 @@ def main():
     daily_history['sell_qty'] = daily_history['Qty'].where(daily_history['Side'] == 'Sell', 0)
     daily_history['buy_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Buy', 0)
     daily_history['sell_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Sell', 0)
-    print(daily_history.info())
+    # print(daily_history.info())
     print(daily_history.head())
 
     # for each unique symbol, sum the number and value of contracts bought and sold
