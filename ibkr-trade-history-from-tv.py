@@ -8,6 +8,7 @@ Author: Darin Davis, Copyright 2026
 History:
     4/28/26: Initial version
     4/29/26: Refactor aggregations, add date as command line arg
+    5/1/26: Fix pandas text wrapping
 """
 
 """
@@ -32,12 +33,25 @@ downloads_folder = Path.home() / "Downloads" # full path to current user's Downl
 def usage():
     print("\nUsage:", sys.argv[0], "[YYYY-MM-DD]")
 
+def debug(msg=""):
+    debug_flag = False
+
+    if debug_flag:
+        line = sys._getframe(1).f_lineno # 1 = caller's line number
+        # print(f"DEBUG [{__file__}:{line}] {msg}")
+        print(f"DEBUG [{line}] {msg}")
+
 
 """
                     MAIN CODE
 """
-if __name__ == "__main__":
+def main():
 
+    # Force pandas to show all columns and allow wrapping
+    pd.set_option('display.max_columns', None)      # Show every column
+    pd.set_option('display.width', None)            # Auto-detect terminal width (or set a large number like 2000)
+    pd.set_option('display.max_colwidth', None)     # Don't truncate individual cell content
+    pd.set_option('display.expand_frame_repr', True)  # wrap text
 
     this_date = date.today().strftime('%Y-%m-%d') # default date of trades to analyze
 
@@ -89,8 +103,8 @@ if __name__ == "__main__":
     daily_history['sell_qty'] = daily_history['Qty'].where(daily_history['Side'] == 'Sell', 0)
     daily_history['buy_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Buy', 0)
     daily_history['sell_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Sell', 0)
-    # print(daily_history.info())
-    # print(daily_history.head())
+    print(daily_history.info())
+    print(daily_history.head())
 
     # for each unique symbol, sum the number and value of contracts bought and sold
     net_positions = (daily_history
@@ -111,12 +125,15 @@ if __name__ == "__main__":
 
     # compute total PnL for all symbols
     total_pnl = net_positions['PnL'].sum()
-    print(f"Total PnL: {total_pnl}")
+    print(f"\nTotal PnL: {total_pnl}")
 
     # check to ensure all contracts closed
     if (net_positions['net_qty'] != 0).any():
-        print("The following symbols have non-zero net quantity:")
+        print("\nThe following symbols have non-zero net quantity:")
         print(net_positions[net_positions['net_qty'] != 0].to_string(index=False))
     else:
-        print("All positions are flat (net_qty = 0 for all symbols).")
+        print("\nAll positions are flat (net_qty = 0 for all symbols).")
 
+
+if __name__ == "__main__":
+    main()
