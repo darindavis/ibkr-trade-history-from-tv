@@ -9,6 +9,7 @@ History:
     4/28/26: Initial version
     4/29/26: Refactor aggregations, add date as command line arg
     5/1/26: Fix pandas text wrapping
+    5/4/26: Add risk and % return; add save results to CSV
 """
 
 """
@@ -81,7 +82,7 @@ def main():
         print(f"Error: {e}")
 
 
-    print(f"Trade history for {this_date}")
+    print(f"\nTrade history for {this_date}")
 
     # Convert Time column to datetime
     history['Time'] = pd.to_datetime(history['Time'])
@@ -93,6 +94,8 @@ def main():
         print("No trades on this date")
         exit(1)
 
+    # Make Time the leftmost column
+    daily_history = daily_history[['Time'] + [c for c in daily_history.columns if c != 'Time']]
 
     ### create columns for aggregation ###
 
@@ -103,8 +106,9 @@ def main():
     daily_history['sell_qty'] = daily_history['Qty'].where(daily_history['Side'] == 'Sell', 0)
     daily_history['buy_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Buy', 0)
     daily_history['sell_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Sell', 0)
+    
     # print(daily_history.info())
-    print(daily_history.head())
+    print(daily_history.to_string(index=False))
 
     # for each unique symbol, sum the number and value of contracts bought and sold
     net_positions = (daily_history
@@ -121,11 +125,20 @@ def main():
     # compute PnL for each symbol
     net_positions['PnL'] = net_positions['sell_amt'] - net_positions['buy_amt']
 
-    print(net_positions)
+    print("\nNet positions:")
+    print(net_positions.to_string(index=False))
 
     # compute total PnL for all symbols
     total_pnl = net_positions['PnL'].sum()
     print(f"\nTotal PnL: {total_pnl}")
+
+    # compute total risk for all symbols
+    total_risk = net_positions['buy_amt'].sum()
+    print(f"Total Risk: {total_risk}")
+
+    # compute % return
+    pcnt_return = total_pnl / total_risk
+    print(f"Percent Return: {pcnt_return:.1%}")
 
     # check to ensure all contracts closed
     if (net_positions['net_qty'] != 0).any():
@@ -133,6 +146,20 @@ def main():
         print(net_positions[net_positions['net_qty'] != 0].to_string(index=False))
     else:
         print("\nAll positions are flat (net_qty = 0 for all symbols).")
+
+
+    # save results to CSV
+    out_file = downloads_folder / f"{this_date} interactive-brokers-trade-history-rpt.csv"
+
+    with open(out_file, "w", encoding='utf-8') as f:
+        f.write(f"IBKR trades for {this_date}\n")
+        daily_history.to_csv(f, index=False, sep=',', lineterminator='\n')
+
+        f.write(f"\nNet positions\n")
+        net_positions.to_csv(f, index=False, sep=',', lineterminator='\n')
+        f.write(f"\nTotal PnL:,{total_pnl}\n")
+        f.write(f"Total Risk:,{total_risk}\n")
+        f.write(f"Percent Return:,{pcnt_return:.1%}\n")
 
 
 if __name__ == "__main__":
