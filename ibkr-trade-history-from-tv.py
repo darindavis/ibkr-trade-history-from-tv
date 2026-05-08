@@ -10,6 +10,7 @@ History:
     4/29/26: Refactor aggregations, add date as command line arg
     5/1/26: Fix pandas text wrapping
     5/4/26: Add risk and % return; add save results to CSV
+    5/7/26: Add % return for each symbol
 """
 
 """
@@ -124,9 +125,15 @@ def main():
 
     # compute PnL for each symbol
     net_positions['PnL'] = net_positions['sell_amt'] - net_positions['buy_amt']
+    net_positions['ReturnPcnt'] = net_positions['PnL'] / net_positions['buy_amt']
 
     print("\nNet positions:")
-    print(net_positions.to_string(index=False))
+    print(net_positions.to_string(
+        index=False,
+        formatters={
+            'ReturnPcnt': lambda x: f'{x*100:.1f}%' # format as a percentage
+        }
+    ))
 
     # compute total PnL for all symbols
     total_pnl = net_positions['PnL'].sum()
@@ -148,9 +155,12 @@ def main():
         print("\nAll positions are flat (net_qty = 0 for all symbols).")
 
 
-    # save results to CSV
-    out_file = downloads_folder / f"{this_date} interactive-brokers-trade-history-rpt.csv"
+    # format as a percentage
+    net_positions['ReturnPcnt'] = net_positions['ReturnPcnt'].apply(lambda x: f'{x*100:.1f}%')
 
+   # save results to CSV
+    out_file = downloads_folder / f"{this_date} interactive-brokers-trade-history-rpt.csv"
+ 
     with open(out_file, "w", encoding='utf-8') as f:
         f.write(f"IBKR trades for {this_date}\n")
         daily_history.to_csv(f, index=False, sep=',', lineterminator='\n')
