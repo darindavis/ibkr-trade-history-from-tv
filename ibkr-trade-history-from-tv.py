@@ -11,6 +11,7 @@ History:
     5/1/26: Fix pandas text wrapping
     5/4/26: Add risk and % return; add save results to CSV
     5/7/26: Add % return for each symbol
+    5/12/26: Sort history by increasing 'Time'.
 """
 
 """
@@ -85,8 +86,9 @@ def main():
 
     print(f"\nTrade history for {this_date}")
 
-    # Convert Time column to datetime
+    # Convert Time column to datetime and sort increasing
     history['Time'] = pd.to_datetime(history['Time'])
+    history = history.sort_values(by='Time', ascending=True)
 
     # filter out all dates except for this_date
     daily_history = history[history['Time'].dt.date == pd.to_datetime(this_date).date()].copy()
