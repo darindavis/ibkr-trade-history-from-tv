@@ -12,6 +12,8 @@ History:
     5/4/26: Add risk and % return; add save results to CSV
     5/7/26: Add % return for each symbol
     5/12/26: Sort history by increasing 'Time'.
+    5/18/26: TV changed the column headers 'Qty' to 'Quantity' and 'Net Amount' to 'Net amount'
+            Report total net P&L for closed positions only.
 """
 
 """
@@ -37,7 +39,7 @@ def usage():
     print("\nUsage:", sys.argv[0], "[YYYY-MM-DD]")
 
 def debug(msg=""):
-    debug_flag = False
+    debug_flag = True
 
     if debug_flag:
         line = sys._getframe(1).f_lineno # 1 = caller's line number
@@ -103,12 +105,12 @@ def main():
     ### create columns for aggregation ###
 
     # create column reflecting negative quantity for sells
-    daily_history['net_qty'] = daily_history['Qty'].where(daily_history['Side'] == 'Buy', -daily_history['Qty'])
+    daily_history['net_qty'] = daily_history['Quantity'].where(daily_history['Side'] == 'Buy', -daily_history['Quantity'])
     # Syntax: keep original value if condition is True; replace it with other value if condition is False
-    daily_history['buy_qty'] = daily_history['Qty'].where(daily_history['Side'] == 'Buy', 0)
-    daily_history['sell_qty'] = daily_history['Qty'].where(daily_history['Side'] == 'Sell', 0)
-    daily_history['buy_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Buy', 0)
-    daily_history['sell_amt'] = daily_history['Net Amount'].where(daily_history['Side'] == 'Sell', 0)
+    daily_history['buy_qty'] = daily_history['Quantity'].where(daily_history['Side'] == 'Buy', 0)
+    daily_history['sell_qty'] = daily_history['Quantity'].where(daily_history['Side'] == 'Sell', 0)
+    daily_history['buy_amt'] = daily_history['Net amount'].where(daily_history['Side'] == 'Buy', 0)
+    daily_history['sell_amt'] = daily_history['Net amount'].where(daily_history['Side'] == 'Sell', 0)
     
     # print(daily_history.info())
     print(daily_history.to_string(index=False))
@@ -137,9 +139,9 @@ def main():
         }
     ))
 
-    # compute total PnL for all symbols
-    total_pnl = net_positions['PnL'].sum()
-    print(f"\nTotal PnL: {total_pnl}")
+    # compute total PnL for all symbols with closed positions
+    total_pnl = net_positions.query('net_qty == 0')['PnL'].sum()
+    print(f"\nTotal PnL for closed positions: {total_pnl}")
 
     # compute total risk for all symbols
     total_risk = net_positions['buy_amt'].sum()
@@ -151,7 +153,7 @@ def main():
 
     # check to ensure all contracts closed
     if (net_positions['net_qty'] != 0).any():
-        print("\nThe following symbols have non-zero net quantity:")
+        print("\nThe following symbols have open positions (non-zero net quantity):")
         print(net_positions[net_positions['net_qty'] != 0].to_string(index=False))
     else:
         print("\nAll positions are flat (net_qty = 0 for all symbols).")
