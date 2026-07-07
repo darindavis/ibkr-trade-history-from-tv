@@ -12,8 +12,9 @@ History:
     5/4/26: Add risk and % return; add save results to CSV
     5/7/26: Add % return for each symbol
     5/12/26: Sort history by increasing 'Time'.
-    5/18/26: TV changed the column headers 'Qty' to 'Quantity' and 'Net Amount' to 'Net amount'
+    5/18/26: TV changed the column headers 'Qty' to 'Quantity' and 'Net Amount' to 'Net amount'.
             Report total net P&L for closed positions only.
+    7/7/26: Add fees to PnL calculation.
 """
 
 """
@@ -124,11 +125,12 @@ def main():
                         sell_qty=('sell_qty', 'sum'),
                         buy_amt=('buy_amt', 'sum'),
                         sell_amt=('sell_amt', 'sum'),
+                        fees=('Commission', 'sum'),
                     )
                     .reset_index())
 
     # compute PnL for each symbol
-    net_positions['PnL'] = net_positions['sell_amt'] - net_positions['buy_amt']
+    net_positions['PnL'] = net_positions['sell_amt'] - net_positions['buy_amt'] - net_positions['fees']
     net_positions['ReturnPcnt'] = net_positions['PnL'] / net_positions['buy_amt']
 
     print("\nNet positions:")
