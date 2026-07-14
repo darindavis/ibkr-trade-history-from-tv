@@ -15,6 +15,7 @@ History:
     5/18/26: TV changed the column headers 'Qty' to 'Quantity' and 'Net Amount' to 'Net amount'.
             Report total net P&L for closed positions only.
     7/7/26: Add fees to PnL calculation.
+    7/14/26: Fix formatting for total PnL.
 """
 
 """
@@ -143,7 +144,7 @@ def main():
 
     # compute total PnL for all symbols with closed positions
     total_pnl = net_positions.query('net_qty == 0')['PnL'].sum()
-    print(f"\nTotal PnL for closed positions: {total_pnl}")
+    print(f"\nTotal PnL for closed positions: {total_pnl:.2}")
 
     # compute total risk for all symbols
     total_risk = net_positions['buy_amt'].sum()
