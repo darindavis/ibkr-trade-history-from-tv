@@ -16,6 +16,7 @@ History:
             Report total net P&L for closed positions only.
     7/7/26: Add fees to PnL calculation.
     7/14/26: Fix formatting for total PnL.
+    7/16/26: Fix formatting for total PnL (again). Add tip to usage() about distinguishing trades on the same symbol.
 """
 
 """
@@ -38,7 +39,15 @@ downloads_folder = Path.home() / "Downloads" # full path to current user's Downl
 """
 
 def usage():
-    print("\nUsage:", sys.argv[0], "[YYYY-MM-DD]")
+    script_name = Path(sys.argv[0]).name
+    print("\nUsage:", script_name, "[YYYY-MM-DD] (default = today)")
+    tip = r"""
+Tip: If there are multiple trades on the same option contract, edit the exported CSV file and add an
+integer to the end of the symbol to make it unique. For example, if there are two trades on "SPY 450 call",
+change the second one to "SPY 450 call 2". This will allow the script to correctly aggregate the fills
+for each unique trade.
+"""
+    print(tip)
 
 def debug(msg=""):
     debug_flag = True
@@ -144,7 +153,7 @@ def main():
 
     # compute total PnL for all symbols with closed positions
     total_pnl = net_positions.query('net_qty == 0')['PnL'].sum()
-    print(f"\nTotal PnL for closed positions: {total_pnl:.2}")
+    print(f"\nTotal PnL for closed positions: {total_pnl:.2f}")
 
     # compute total risk for all symbols
     total_risk = net_positions['buy_amt'].sum()
